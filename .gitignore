@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+faceenv/
+
+# Home Assistant
+homeassistant/
+
+# Faces reais
+known_faces/
+
