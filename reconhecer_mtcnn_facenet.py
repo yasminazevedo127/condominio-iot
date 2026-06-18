@@ -6,6 +6,8 @@ import paho.mqtt.client as mqtt
 import json
 import time
 import os
+from banco import listar_moradores
+from banco import registrar_acesso
 from datetime import datetime
 
 # =========================
@@ -56,23 +58,30 @@ embedder = FaceNet()
 
 moradores = {}
 
-for arquivo in os.listdir("faces"):
+for morador in listar_moradores():
 
-    if arquivo.endswith("_embedding.npy"):
+    (
+        morador_id,
+        nome,
+        apartamento,
+        bloco,
+        caminho_foto,
+        caminho_embedding,
+        ativo
+    ) = morador
 
-        nome = arquivo.replace(
-            "_embedding.npy",
-            ""
+    moradores[morador_id] = {
+        "nome": nome,
+        "apartamento": apartamento,
+        "bloco": bloco,
+        "embedding": np.load(
+            caminho_embedding
         )
+    }
 
-        moradores[nome] = np.load(
-            os.path.join(
-                "faces",
-                arquivo
-            )
-        )
-
-print(f"{len(moradores)} moradores carregados.")
+print(
+    f"{len(moradores)} moradores carregados."
+)
 
 # =========================
 # WEBCAM
@@ -126,31 +135,41 @@ while True:
             )[0]
 
             menor_distancia = 999
-            nome = "Desconhecido"
+            melhor_id = None
 
-            for morador, embedding in moradores.items():
+            for morador_id, dados in moradores.items():
 
                 distancia = np.linalg.norm(
-                    embedding -
+                    dados["embedding"] -
                     embedding_atual
                 )
 
                 if distancia < menor_distancia:
 
                     menor_distancia = distancia
-                    nome = morador
+                    melhor_id = morador_id
+
+            nome = "Desconhecido"
+            apartamento = ""
+            bloco = ""
 
             autorizado = False
             gate = "closed"
 
-            if menor_distancia < LIMIAR_RECONHECIMENTO:
+            if (
+                melhor_id is not None
+                and menor_distancia <
+                LIMIAR_RECONHECIMENTO
+            ):
+
+                dados = moradores[melhor_id]
+
+                nome = dados["nome"]
+                apartamento = dados["apartamento"]
+                bloco = dados["bloco"]
 
                 autorizado = True
                 gate = "open"
-
-            else:
-
-                nome = "Desconhecido"
 
             # -----------------
             # Desenha retângulo
@@ -171,7 +190,7 @@ while True:
 
             cv2.putText(
                 frame,
-                f"{nome} ({distancia:.2f})",
+                f"{nome} ({menor_distancia:.2f})",
                 (x, y - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -191,7 +210,14 @@ while True:
             ):
 
                 payload = {
-                    "name": nome,
+                    "morador_id": (
+                        melhor_id
+                        if autorizado
+                        else None
+                    ),
+                    "nome": nome,
+                    "apartamento": apartamento,
+                    "bloco": bloco,
                     "authorized": autorizado,
                     "gate": gate,
                     "distance": round(
@@ -207,7 +233,19 @@ while True:
                     MQTT_TOPIC,
                     json.dumps(payload)
                 )
-
+                
+                if autorizado:
+                    registrar_acesso(
+                        morador_id=melhor_id,
+                        autorizado=1,
+                        distancia=float(
+                            menor_distancia
+                        ),
+                        data_hora=datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                    )
+    
                 print(
                     json.dumps(
                         payload,
