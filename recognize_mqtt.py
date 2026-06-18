@@ -11,7 +11,7 @@ import time
 client = mqtt.Client()
 
 client.connect(
-    "localhost",
+    "192.168.64.2",
     1883,
     60
 )

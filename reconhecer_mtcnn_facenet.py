@@ -5,6 +5,7 @@ from keras_facenet import FaceNet
 import paho.mqtt.client as mqtt
 import json
 import time
+import os
 from datetime import datetime
 
 # =========================
@@ -13,7 +14,7 @@ from datetime import datetime
 
 LIMIAR_RECONHECIMENTO = 0.9
 
-MQTT_HOST = "localhost"
+MQTT_HOST = "192.168.64.2"
 MQTT_PORT = 1883
 MQTT_TOPIC = "condominio/acesso"
 
@@ -23,11 +24,23 @@ MQTT_TOPIC = "condominio/acesso"
 
 client = mqtt.Client()
 
+client.username_pw_set(
+    "mqtt",
+    "mqtt123"
+)
+
+print("Conectando MQTT...")
+print(MQTT_HOST, MQTT_PORT)
+
 client.connect(
     MQTT_HOST,
     MQTT_PORT,
     60
 )
+
+print("MQTT conectado!")
+
+client.loop_start()
 
 # =========================
 # MTCNN
@@ -41,9 +54,25 @@ detector = MTCNN()
 
 embedder = FaceNet()
 
-embedding_yasmin = np.load(
-    "faces/yasmin_embedding.npy"
-)
+moradores = {}
+
+for arquivo in os.listdir("faces"):
+
+    if arquivo.endswith("_embedding.npy"):
+
+        nome = arquivo.replace(
+            "_embedding.npy",
+            ""
+        )
+
+        moradores[nome] = np.load(
+            os.path.join(
+                "faces",
+                arquivo
+            )
+        )
+
+print(f"{len(moradores)} moradores carregados.")
 
 # =========================
 # WEBCAM
@@ -96,20 +125,32 @@ while True:
                 [rosto]
             )[0]
 
-            distancia = np.linalg.norm(
-                embedding_yasmin -
-                embedding_atual
-            )
-
+            menor_distancia = 999
             nome = "Desconhecido"
+
+            for morador, embedding in moradores.items():
+
+                distancia = np.linalg.norm(
+                    embedding -
+                    embedding_atual
+                )
+
+                if distancia < menor_distancia:
+
+                    menor_distancia = distancia
+                    nome = morador
+
             autorizado = False
             gate = "closed"
 
-            if distancia < LIMIAR_RECONHECIMENTO:
+            if menor_distancia < LIMIAR_RECONHECIMENTO:
 
-                nome = "Yasmin"
                 autorizado = True
                 gate = "open"
+
+            else:
+
+                nome = "Desconhecido"
 
             # -----------------
             # Desenha retângulo
@@ -154,7 +195,7 @@ while True:
                     "authorized": autorizado,
                     "gate": gate,
                     "distance": round(
-                        float(distancia),
+                        float(menor_distancia),
                         3
                     ),
                     "timestamp": datetime.now().strftime(
