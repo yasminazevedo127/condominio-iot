@@ -70,14 +70,15 @@ for morador in listar_moradores():
         ativo
     ) = morador
 
-    moradores[morador_id] = {
-        "nome": nome,
-        "apartamento": apartamento,
-        "bloco": bloco,
-        "embedding": np.load(
-            caminho_embedding
-        )
-    }
+    if os.path.exists(caminho_embedding):
+        moradores[morador_id] = {
+            "nome": nome,
+            "apartamento": apartamento,
+            "bloco": bloco,
+            "embedding": np.load(
+                caminho_embedding
+            )
+        }
 
 print(
     f"{len(moradores)} moradores carregados."

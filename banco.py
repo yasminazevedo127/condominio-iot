@@ -42,6 +42,63 @@ def inserir_morador(
     return morador_id
 
 
+
+def desativar_morador(
+    morador_id
+    ):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE morador
+        SET ativo = 0
+        WHERE id = ?
+    """,
+    (morador_id,))
+
+    conn.commit()
+    conn.close()
+
+
+def ativar_morador(
+    morador_id
+    ):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE morador
+        SET ativo = 1
+        WHERE id = ?
+    """,
+    (morador_id,))
+
+    conn.commit()
+    conn.close()
+
+def listar_moradores():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            nome,
+            apartamento,
+            bloco,
+            ativo
+        FROM morador
+        ORDER BY nome
+    """)
+
+    moradores = cursor.fetchall()
+
+    conn.close()
+
+    return moradores
+
+
 def buscar_morador_por_id(
     morador_id
     ):
@@ -55,28 +112,12 @@ def buscar_morador_por_id(
     """,
     (morador_id,))
 
-    resultado = cursor.fetchone()
+    morador = cursor.fetchone()
 
     conn.close()
 
-    return resultado
+    return morador
 
-def listar_moradores():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT *
-        FROM morador
-        WHERE ativo = 1
-    """)
-
-    moradores = cursor.fetchall()
-
-    conn.close()
-
-    return moradores
 
 
 def registrar_acesso(
