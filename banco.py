@@ -87,6 +87,8 @@ def listar_moradores():
             nome,
             apartamento,
             bloco,
+            caminho_foto,
+            caminho_embedding,
             ativo
         FROM morador
         ORDER BY nome
